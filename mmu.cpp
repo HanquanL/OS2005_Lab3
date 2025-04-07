@@ -12,16 +12,18 @@ vector<int> randvals;
 int randomRange,randomOffset = 0;
 void get_randomNumber();
 int myRandom();
-void readInputFile(string inputFile);
+void readInputProcess(vector<Process*> *processes,string inputFile);
 
 int main(int argc, char *argv[]){
     string inputFile = argv[argc - 2];
     string rfile = argv[argc - 1];
+    vector<Process*> processes;
     randomNumbers.open(rfile);
     get_randomNumber();
-    cout << myRandom() << endl; //for test purposes
-    cout << myRandom() << endl; //for test purposes
-    cout << myRandom() << endl; //for test purposes
+    // cout << myRandom() << endl; //for test purposes
+    // cout << myRandom() << endl; //for test purposes
+    // cout << myRandom() << endl; //for test purposes
+    readInputProcess(&processes,inputFile);
 
 
 }
@@ -45,7 +47,7 @@ int myRandom(){
     return number;
 }
 
-void readInputFile(string inputFile){
+void readInputProcess(vector<Process*> *processes,string inputFile){
     fstream file;
     file.open(inputFile);
     
