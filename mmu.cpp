@@ -11,6 +11,7 @@ ifstream randomNumbers;
 vector<int> randvals;
 int randomRange,randomOffset = 0;
 void get_randomNumber();
+int myRandom();
 void readInputFile(string inputFile);
 
 int main(int argc, char *argv[]){
@@ -18,9 +19,9 @@ int main(int argc, char *argv[]){
     string rfile = argv[argc - 1];
     randomNumbers.open(rfile);
     get_randomNumber();
-    // cout << mydrndom(10) << endl; //for test purposes
-    // cout << mydrndom(10) << endl; //for test purposes
-    // cout << mydrndom(10) << endl; //for test purposes
+    cout << myRandom() << endl; //for test purposes
+    cout << myRandom() << endl; //for test purposes
+    cout << myRandom() << endl; //for test purposes
 
 
 }

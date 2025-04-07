@@ -8,13 +8,6 @@ using namespace std;
 #define MAX_PTE 64
 #define MAX_FRAMES 128
 
-class Process{
-    public:
-        vector<vma> vmas;
-        page_table page_table[MAX_PTE];
-
-};
-
 class vma{
     public:
         int start_vpage;
@@ -29,7 +22,7 @@ class vma{
         }
 };
 
-struct page_table{
+struct page_t{
     unsigned int PRESENT: 1; 
     unsigned int REFERENCED: 1;
     unsigned int MODIFIED: 1;
@@ -38,6 +31,17 @@ struct page_table{
     unsigned int page_frame_number: 7;
     unsigned int free_to_use: 20;
 };
+
+class Process{
+    public:
+        int pid;
+        vector<vma> vmas;
+        page_t page_table[MAX_PTE];
+    Process(int pid){
+        this->pid = pid;
+    };
+};
+
 
 
 
