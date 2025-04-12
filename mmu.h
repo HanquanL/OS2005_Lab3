@@ -42,6 +42,16 @@ class Process{
     };
 };
 
+class instruction{
+    public:
+        char operation;
+        int page_number;
+    instruction(char operation, int page_number){
+            this->operation = operation;
+            this->page_number = page_number;
+    };
+};
+
 
 
 
