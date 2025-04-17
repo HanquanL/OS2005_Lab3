@@ -12,18 +12,21 @@ ifstream randomNumbers;
 vector<int> randvals;
 int randomRange,randomOffset = 0;
 vector<frame_t> global_frame_table;
+int instruction_idx = 0;
 void get_randomNumber();
 int myRandom();
-void readInputProcess(string inputFile,vector<Process*> *processes, vector<instruction*> *instructions);
+void readInputProcess(string inputFile,vector<Process*> *processes, vector<Instruction*> *instructions);
 void printPageTable(vector<Process*> *processesVector);
 void printFrameTable();
+Instruction* get_next_instruction(vector<Instruction*> *instructions);
+void printInstruction(Instruction *inst);
 
 
 int main(int argc, char *argv[]){
     string inputFile = argv[argc - 2];
     string rfile = argv[argc - 1];
     vector<Process*> processesVector;
-    vector<instruction*> instructions;
+    vector<Instruction*> instructions;
     randomNumbers.open(rfile);
     get_randomNumber();
     // cout << myRandom() << endl; //for test purposes
@@ -40,8 +43,8 @@ int main(int argc, char *argv[]){
     //     cout << "Instruction: " << inst->operation << " " << inst->page_number << endl;
     // }
     
-
-
+    printPageTable( &processesVector );
+    printFrameTable();
 }
 
 void get_randomNumber(){
@@ -63,7 +66,7 @@ int myRandom(){
     return number;
 }
 
-void readInputProcess(string inputFile,vector<Process*> *processesVector, vector<instruction*> *instructions){
+void readInputProcess(string inputFile,vector<Process*> *processesVector, vector<Instruction*> *instructions){
     ifstream file(inputFile);
     int numOfProcesses = 0;
     if(!file.is_open()){
@@ -121,7 +124,7 @@ void readInputProcess(string inputFile,vector<Process*> *processesVector, vector
             char operation;
             int page;
             iss >> operation >> page;
-            instruction *tempInstruction = new instruction(operation, page);
+            Instruction *tempInstruction = new Instruction(operation, page);
             instructions->push_back(tempInstruction);
         }
     }
@@ -134,10 +137,10 @@ void printPageTable(vector<Process*> *processesVector){
         Process *current_proc = processesVector -> at(i);
         page_t pte;
         printf("PT[%d]:",current_proc -> pid);
-        for(int i = 0; i < sizeof(current_proc ->page_table); i++){
-            pte = current_proc -> page_table[i];
+        for(int j = 0; j < current_proc->page_table.size(); j++){
+            pte = current_proc -> page_table.at(j);
             if(pte.PRESENT){
-                printf( " %d:", i);
+                printf( " %d:", j);
                 if(pte.REFERENCED){
                     cout << "R";
                 }else{
@@ -173,4 +176,18 @@ void printFrameTable(){
         }
     }
     cout << " " << endl;
+}
+
+Instruction* get_next_instruction(vector<Instruction*> *instructions){
+    if(instruction_idx < instructions->size()){
+        Instruction *tempInstruction = instructions->at(instruction_idx);
+        instruction_idx++;
+        return tempInstruction;
+    }else{
+        return nullptr;
+    }
+}
+
+void printInstruction(Instruction *inst){
+    printf("%d: ==> %c %d\n", instruction_idx, inst->operation, inst->page_number);
 }

@@ -36,17 +36,18 @@ class Process{
     public:
         int pid;
         vector<vma> vmas;
-        page_t page_table[MAX_PTE];
+        vector<page_t> page_table;
     Process(int pid){
         this->pid = pid;
+        this->page_table.resize(MAX_PTE);
     };
 };
 
-class instruction{
+class Instruction{
     public:
         char operation;
         int page_number;
-    instruction(char operation, int page_number){
+    Instruction(char operation, int page_number){
             this->operation = operation;
             this->page_number = page_number;
     };
