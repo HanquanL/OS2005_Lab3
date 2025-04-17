@@ -11,6 +11,7 @@ using namespace std;
 ifstream randomNumbers;
 vector<int> randvals;
 int randomRange,randomOffset = 0;
+vector<frame_t> global_frame_table;
 void get_randomNumber();
 int myRandom();
 void readInputProcess(string inputFile,vector<Process*> *processes, vector<instruction*> *instructions);
@@ -23,7 +24,6 @@ int main(int argc, char *argv[]){
     vector<instruction*> instructions;
     randomNumbers.open(rfile);
     get_randomNumber();
-    // cout << myRandom() << endl; //for test purposes
     // cout << myRandom() << endl; //for test purposes
     // cout << myRandom() << endl; //for test purposes
     readInputProcess(inputFile, &processesVector, &instructions);

@@ -29,7 +29,7 @@ struct page_t{
     unsigned int WRITE_PROTECTED: 1;
     unsigned int PAGEDOUT: 1;
     unsigned int page_frame_number: 7;
-    unsigned int free_to_use: 20;
+    unsigned int spare_bits: 20;
 };
 
 class Process{
@@ -50,6 +50,16 @@ class instruction{
             this->operation = operation;
             this->page_number = page_number;
     };
+};
+
+struct frame_t{
+    Process *process;
+    int virtaul_page_number;
+    int frame_number;
+    // Age coutner for aging algorithm
+    unsigned int age_counter: 32;
+    // Timestamp for working set algorithm
+    unsigned long long timeOfLastAccess;
 };
 
 
