@@ -15,6 +15,8 @@ vector<frame_t> global_frame_table;
 void get_randomNumber();
 int myRandom();
 void readInputProcess(string inputFile,vector<Process*> *processes, vector<instruction*> *instructions);
+void printPageTable(vector<Process*> *processesVector);
+void printFrameTable();
 
 
 int main(int argc, char *argv[]){
@@ -125,4 +127,50 @@ void readInputProcess(string inputFile,vector<Process*> *processesVector, vector
     }
 
     file.close();
+}
+
+void printPageTable(vector<Process*> *processesVector){
+    for(int i = 0; i < processesVector -> size(); i++){
+        Process *current_proc = processesVector -> at(i);
+        page_t pte;
+        printf("PT[%d]:",current_proc -> pid);
+        for(int i = 0; i < sizeof(current_proc ->page_table); i++){
+            pte = current_proc -> page_table[i];
+            if(pte.PRESENT){
+                printf( " %d:", i);
+                if(pte.REFERENCED){
+                    cout << "R";
+                }else{
+                    cout << "-";
+                }
+
+                if(pte.MODIFIED){
+                    cout << "M";
+                }else{
+                    cout << "-";
+                }
+
+                if(pte.PAGEDOUT){
+                    cout << "S";
+                }else{
+                    cout << "-";
+                }
+            }
+        }
+        cout << " " << endl;
+    }
+}
+
+void printFrameTable(){
+    frame_t fte;
+    printf("FT: ");
+    for(int i = 0; i < global_frame_table.size(); i++){
+        fte = global_frame_table[i];
+        if(fte.virtaul_page_number == -1){
+            cout << " *";
+        }else{
+            printf(" %d:%d", fte.process->pid, fte.virtaul_page_number);
+        }
+    }
+    cout << " " << endl;
 }
