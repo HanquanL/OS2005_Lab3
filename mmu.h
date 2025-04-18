@@ -39,9 +39,8 @@ class Process{
         int pid;
         vector<vma> vmas;
         vector<page_t> page_table;
-    Process(int pid){
+    Process(int pid) : page_table(MAX_PTE){
         this->pid = pid;
-        this->page_table.resize(MAX_PTE);
     };
 };
 
@@ -68,6 +67,26 @@ struct frame_t{
 class Pager{
     public:
         virtual frame_t* select_victim_frame() = 0;
+};
+
+class FIFO_Pager : public Pager{
+    private:
+        int hand;
+        vector<frame_t*> *frames;
+    public:
+        frame_t* select_victim_frame() override{
+            int framePointer = hand;
+            hand++;
+            if(hand >= frames->size()){
+                hand = 0;
+            }
+            return frames->at(framePointer);
+        };
+        FIFO_Pager(vector<frame_t*> *frames){
+            this->frames = frames;
+            this->hand = 0;
+        };
+
 };
 
 

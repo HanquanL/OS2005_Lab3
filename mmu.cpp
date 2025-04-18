@@ -14,11 +14,12 @@ using namespace std;
 ifstream randomNumbers;
 vector<int> randvals;
 int randomRange,randomOffset = 0;
-vector<frame_t*> global_frame_table(MAX_FRAMES);
+vector<frame_t*> global_frame_table;
 vector<frame_t*> freePool;
 int instruction_idx = 0;
 bool EOI = false;
 Pager* pager;
+int default_frame_number = 16;
 void get_randomNumber();
 int myRandom();
 void readInputProcess(string inputFile,vector<Process*> *processes, vector<Instruction*> *instructions);
@@ -27,6 +28,7 @@ void printFrameTable();
 Instruction* get_next_instruction(vector<Instruction*> *instructions);
 void printInstruction(Instruction *inst);
 frame_t* getFrame(Pager* pager);
+void initiaFrameTable(int default_frame_number, vector<frame_t*> *global_frame_table, vector<frame_t*> *freePool);
 
 
 int main(int argc, char *argv[]){
@@ -50,9 +52,13 @@ int main(int argc, char *argv[]){
     // for(auto inst : instructions){
     //     cout << "Instruction: " << inst->operation << " " << inst->page_number << endl;
     // }
-    
+    initiaFrameTable(default_frame_number, &global_frame_table, &freePool);
+    pager = new FIFO_Pager(&global_frame_table);
     while(!EOI){
         Instruction *inst = get_next_instruction(&instructions);
+        if(inst == nullptr){
+            break;
+        }
         printInstruction(inst);
         page_t *pte;
         switch(inst->operation){
@@ -62,26 +68,42 @@ int main(int argc, char *argv[]){
             case 'e':
                 break;
             default:
+                
                 pte = &(current_proc->page_table.at(inst->number));
-
+                if(pte == nullptr){
+                    cout << "SEGV" << endl;
+                    break;
+                }
                 if(pte -> file_mapped){
                     cout << " FINALIZE " << endl;
                 };
                 if(!pte -> PRESENT){
                     frame_t *old_frame_t = getFrame(pager);
-
                     old_frame_t->process = current_proc;
                     old_frame_t->virtaul_page_number = inst->number;
                     old_frame_t->timeOfLastAccess = instruction_idx + 1;
 
                     pte->PRESENT = 1;
                     pte->page_frame_number = old_frame_t->frame_number;
+                    
                 }
+                pte->REFERENCED = 1;
+                if(inst -> operation == 'w'){
+                    if(pte -> WRITE_PROTECTED){
+                        cout << " SEGPROT" << endl;
+                    }else{
+                        pte->MODIFIED = 1;
+                    }
+                }
+                break;
         }
+        instruction_idx++;
        
     }
     printPageTable( &processesVector );
     printFrameTable();
+
+    return 0;
 }
 
 void get_randomNumber(){
@@ -218,7 +240,6 @@ void printFrameTable(){
 Instruction* get_next_instruction(vector<Instruction*> *instructions){
     if(instruction_idx < instructions->size()){
         Instruction *tempInstruction = instructions->at(instruction_idx);
-        instruction_idx++;
         return tempInstruction;
     }else{
         EOI = true;
@@ -237,5 +258,15 @@ frame_t* getFrame(Pager* pager){
         return frame;
     }else{
         return pager->select_victim_frame();
+    }
+}
+
+void initiaFrameTable(int default_frame_number, vector<frame_t*> *global_frame_table, vector<frame_t*> *freePool){
+    for(int i = 0; i < default_frame_number; i++){
+        frame_t *frame = new frame_t();
+        frame->virtaul_page_number = -1;
+        frame->frame_number = i;
+        global_frame_table->push_back(frame);
+        freePool->push_back(frame);
     }
 }
