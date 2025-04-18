@@ -29,7 +29,9 @@ struct page_t{
     unsigned int WRITE_PROTECTED: 1;
     unsigned int PAGEDOUT: 1;
     unsigned int page_frame_number: 7;
-    unsigned int spare_bits: 20;
+    unsigned int file_mapped: 1;
+    // keep objects has at most 32 bits
+    unsigned int spare_bits: 19;
 };
 
 class Process{
@@ -46,10 +48,10 @@ class Process{
 class Instruction{
     public:
         char operation;
-        int page_number;
-    Instruction(char operation, int page_number){
+        int number;
+    Instruction(char operation, int number){
             this->operation = operation;
-            this->page_number = page_number;
+            this->number = number;
     };
 };
 
@@ -63,6 +65,10 @@ struct frame_t{
     unsigned long long timeOfLastAccess;
 };
 
+class Pager{
+    public:
+        virtual frame_t* select_victim_frame() = 0;
+};
 
 
 

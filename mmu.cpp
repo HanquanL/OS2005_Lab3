@@ -8,11 +8,17 @@
 
 using namespace std;
 
+#define MAX_PTE 64
+#define MAX_FRAMES 128
+
 ifstream randomNumbers;
 vector<int> randvals;
 int randomRange,randomOffset = 0;
-vector<frame_t> global_frame_table;
+vector<frame_t*> global_frame_table(MAX_FRAMES);
+vector<frame_t*> freePool;
 int instruction_idx = 0;
+bool EOI = false;
+Pager* pager;
 void get_randomNumber();
 int myRandom();
 void readInputProcess(string inputFile,vector<Process*> *processes, vector<Instruction*> *instructions);
@@ -20,6 +26,7 @@ void printPageTable(vector<Process*> *processesVector);
 void printFrameTable();
 Instruction* get_next_instruction(vector<Instruction*> *instructions);
 void printInstruction(Instruction *inst);
+frame_t* getFrame(Pager* pager);
 
 
 int main(int argc, char *argv[]){
@@ -27,6 +34,7 @@ int main(int argc, char *argv[]){
     string rfile = argv[argc - 1];
     vector<Process*> processesVector;
     vector<Instruction*> instructions;
+    Process *current_proc;
     randomNumbers.open(rfile);
     get_randomNumber();
     // cout << myRandom() << endl; //for test purposes
@@ -43,6 +51,35 @@ int main(int argc, char *argv[]){
     //     cout << "Instruction: " << inst->operation << " " << inst->page_number << endl;
     // }
     
+    while(!EOI){
+        Instruction *inst = get_next_instruction(&instructions);
+        printInstruction(inst);
+        page_t *pte;
+        switch(inst->operation){
+            case 'c':
+                current_proc = processesVector.at(inst->number);
+                break;
+            case 'e':
+                break;
+            default:
+                pte = &(current_proc->page_table.at(inst->number));
+
+                if(pte -> file_mapped){
+                    cout << " FINALIZE " << endl;
+                };
+                if(!pte -> PRESENT){
+                    frame_t *old_frame_t = getFrame(pager);
+
+                    old_frame_t->process = current_proc;
+                    old_frame_t->virtaul_page_number = inst->number;
+                    old_frame_t->timeOfLastAccess = instruction_idx + 1;
+
+                    pte->PRESENT = 1;
+                    pte->page_frame_number = old_frame_t->frame_number;
+                }
+        }
+       
+    }
     printPageTable( &processesVector );
     printFrameTable();
 }
@@ -165,14 +202,14 @@ void printPageTable(vector<Process*> *processesVector){
 }
 
 void printFrameTable(){
-    frame_t fte;
+    frame_t *fte;
     printf("FT: ");
     for(int i = 0; i < global_frame_table.size(); i++){
         fte = global_frame_table[i];
-        if(fte.virtaul_page_number == -1){
+        if(fte->virtaul_page_number == -1){
             cout << " *";
         }else{
-            printf(" %d:%d", fte.process->pid, fte.virtaul_page_number);
+            printf(" %d:%d", fte->process->pid, fte->virtaul_page_number);
         }
     }
     cout << " " << endl;
@@ -184,10 +221,21 @@ Instruction* get_next_instruction(vector<Instruction*> *instructions){
         instruction_idx++;
         return tempInstruction;
     }else{
+        EOI = true;
         return nullptr;
     }
 }
 
 void printInstruction(Instruction *inst){
-    printf("%d: ==> %c %d\n", instruction_idx, inst->operation, inst->page_number);
+    printf("%d: ==> %c %d\n", instruction_idx, inst->operation, inst->number);
+}
+
+frame_t* getFrame(Pager* pager){
+    if(freePool.size() > 0){
+        frame_t *frame = freePool.front();
+        freePool.erase(freePool.begin());
+        return frame;
+    }else{
+        return pager->select_victim_frame();
+    }
 }
