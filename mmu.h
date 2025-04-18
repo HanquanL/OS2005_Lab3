@@ -29,9 +29,39 @@ struct page_t{
     unsigned int WRITE_PROTECTED: 1;
     unsigned int PAGEDOUT: 1;
     unsigned int page_frame_number: 7;
+    // ensure objects has at most 32 bits
     unsigned int file_mapped: 1;
-    // keep objects has at most 32 bits
     unsigned int spare_bits: 19;
+};
+
+class PageState{
+    public:
+        unsigned long long segv;
+        unsigned long long segprot;
+        unsigned long long pageout;
+        unsigned long long pagein;
+        unsigned long long unmap;
+        unsigned long long map;
+        unsigned long long pagefin;
+        unsigned long long pagefout;
+        unsigned long long zeroOp;
+        unsigned long long access;
+        unsigned long long context;
+        unsigned long long processExit;
+        PageState(){
+            segv = 0;
+            segprot = 0;
+            pageout = 0;
+            pagein = 0;
+            unmap = 0;
+            map = 0;
+            pagefin = 0;
+            pagefout = 0;
+            zeroOp = 0;
+            access = 0;
+            context = 0;
+            processExit = 0;
+        };
 };
 
 class Process{
@@ -39,8 +69,10 @@ class Process{
         int pid;
         vector<vma> vmas;
         vector<page_t> page_table;
+        PageState *state;
     Process(int pid) : page_table(MAX_PTE){
         this->pid = pid;
+        this->state = new PageState();
     };
 };
 

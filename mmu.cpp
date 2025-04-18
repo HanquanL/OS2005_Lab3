@@ -29,6 +29,7 @@ Instruction* get_next_instruction(vector<Instruction*> *instructions);
 void printInstruction(Instruction *inst);
 frame_t* getFrame(Pager* pager);
 void initiaFrameTable(int default_frame_number, vector<frame_t*> *global_frame_table, vector<frame_t*> *freePool);
+void printSummary(vector<Process*> *processVector, int instruction_idx);
 
 
 int main(int argc, char *argv[]){
@@ -102,6 +103,7 @@ int main(int argc, char *argv[]){
     }
     printPageTable( &processesVector );
     printFrameTable();
+    printSummary(&processesVector, instruction_idx);
 
     return 0;
 }
@@ -217,6 +219,10 @@ void printPageTable(vector<Process*> *processesVector){
                 }else{
                     cout << "-";
                 }
+            }else if(pte.PAGEDOUT){
+                cout << " #";
+            }else{
+                cout << " *";
             }
         }
         cout << " " << endl;
@@ -269,4 +275,24 @@ void initiaFrameTable(int default_frame_number, vector<frame_t*> *global_frame_t
         global_frame_table->push_back(frame);
         freePool->push_back(frame);
     }
+}
+
+void printSummary(vector<Process*> *processVector, int instruction_idx){
+    PageState *state;
+    unsigned long long cost = 0LL;
+    unsigned long long context_switchs = 0LL;
+    unsigned long long processExit = 0LL;
+    for(int i = 0; i < processVector->size(); i++){
+        state = processVector->at(i)-> state;
+        cost += ((state->map * 410) + (state->unmap * 440) + (state-> pagein * 3210) + (state->pageout * 2850) +
+                (state->pagefin * 3350) + (state->pagefout * 2930) + (state->zeroOp * 160) + (state->segv *444) +
+                (state->segprot * 414) + (state->access * 1) + (state->context * 140) + (state->processExit * 1430));
+
+        context_switchs += state -> context;
+        processExit += state -> processExit;
+        printf("PROC[%d]: U=%llu M=%llu I=%llu O=%llu FI=%llu FO=%llu Z=%llu SV=%llu SP=%llu\n",
+                processVector->at(i)->pid, state->unmap, state->map, state->pagein, state->pageout,
+                state->pagefin, state->pagefout, state->zeroOp, state->segv, state->segprot);
+    }
+    printf("TOTAL: %llu %llu %llu %llu\n", static_cast<unsigned long long>(instruction_idx), context_switchs, cost,  processExit);
 }
