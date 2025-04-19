@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <unistd.h>
 #include "mmu.h"
 
 using namespace std;
@@ -20,6 +21,12 @@ int instruction_idx = 0;
 bool EOI = false;
 Pager* pager;
 int default_frame_number = 16;
+bool ifInst = false;
+bool ifFrameTabe = false;
+bool ifPageTable = false;
+bool ifSummary = false;
+bool ifCurrentPageTable = false;
+bool ifAllPageTable = false;
 void get_randomNumber();
 int myRandom();
 void readInputProcess(string inputFile,vector<Process*> *processes, vector<Instruction*> *instructions);
@@ -30,7 +37,9 @@ void printInstruction(Instruction *inst);
 frame_t* getFrame(Pager* pager);
 void initiaFrameTable(int default_frame_number, vector<frame_t*> *global_frame_table, vector<frame_t*> *freePool);
 void printSummary(vector<Process*> *processVector, int instruction_idx);
-
+void exitProcess(Process *current_proc, vector<frame_t*> *global_frame_table, vector<frame_t*> *freePool);
+void unmapPage(frame_t *fte, bool pageExit);
+void resetPte(page_t *pte);
 
 int main(int argc, char *argv[]){
     string inputFile = argv[argc - 2];
@@ -38,7 +47,66 @@ int main(int argc, char *argv[]){
     vector<Process*> processesVector;
     vector<Instruction*> instructions;
     Process *current_proc;
+    int c;
+
+    pager = new FIFO_Pager(&global_frame_table);  // FIFO_Pager is default pager
     randomNumbers.open(rfile);
+    while(c = getopt(argc, argv, "f:o:a:") != -1){
+        switch(c){
+            case 'f':
+                sscanf(optarg, "%d", &default_frame_number);
+                break;
+            case 'a':
+                switch(optarg[0]){
+                    case 'f':
+                        pager = new FIFO_Pager(&global_frame_table);
+                        break;
+                    case 'a':
+                        //pager = new Aging_Pager(&global_frame_table);
+                        break;
+                    case 'w':
+                        //pager = new WorkingSet_Pager(&global_frame_table);
+                        break;
+                    case 'c':
+                        //pager = new Clock_Pager(&global_frame_table);
+                        break;
+                    case 'r':
+                        //pager = new Random_Pager(&global_frame_table);
+                        break;
+                    case 'e':
+                        //pager = new NotRecentlyUsed_Pager(&global_frame_table);
+                        break;
+                    default:
+                        fputs( "Invalid algorithm option\n",stderr);
+                        return 1;
+                }
+                break;
+            case 'o':
+                for(int i = 0; i < 6; i++){
+                    switch(optarg[i]){
+                        case 'O':
+                            ifInst = true;
+                            break;
+                        case 'F':
+                            ifFrameTabe = true;
+                            break;
+                        case 'P':
+                            ifPageTable = true;
+                            break;
+                        case 'S':
+                            ifSummary = true;
+                            break;
+                        case 'x':
+                            ifCurrentPageTable = true;
+                            break;
+                        case 'y':
+                            ifAllPageTable = true;
+                            break;
+                    }
+                }
+                break;
+        }
+    }
     get_randomNumber();
     // cout << myRandom() << endl; //for test purposes
     // cout << myRandom() << endl; //for test purposes
@@ -54,7 +122,7 @@ int main(int argc, char *argv[]){
     //     cout << "Instruction: " << inst->operation << " " << inst->page_number << endl;
     // }
     initiaFrameTable(default_frame_number, &global_frame_table, &freePool);
-    pager = new FIFO_Pager(&global_frame_table);
+    
     while(!EOI){
         Instruction *inst = get_next_instruction(&instructions);
         if(inst == nullptr){
@@ -65,28 +133,54 @@ int main(int argc, char *argv[]){
         switch(inst->operation){
             case 'c':
                 current_proc = processesVector.at(inst->number);
+                current_proc->state->context++;
                 break;
             case 'e':
+                current_proc->state->processExit++;
+                exitProcess(current_proc, &global_frame_table, &freePool);
                 break;
             default:
-                
+                current_proc->state->access++;
                 pte = &(current_proc->page_table.at(inst->number));
                 if(pte == nullptr){
                     cout << "SEGV" << endl;
+                    current_proc->state->segv++;
                     break;
                 }
-                if(pte -> file_mapped){
-                    cout << " FINALIZE " << endl;
-                };
                 if(!pte -> PRESENT){
-                    frame_t *old_frame_t = getFrame(pager);
-                    old_frame_t->process = current_proc;
-                    old_frame_t->virtaul_page_number = inst->number;
-                    old_frame_t->timeOfLastAccess = instruction_idx + 1;
+                    frame_t *frame_t = getFrame(pager);
+                    if(frame_t->process != nullptr){
+                        unmapPage(frame_t, false);
+                    }
+                    if(pte->file_mapped){
+                        if(ifInst){
+                            cout << " FIN" << endl;
+                            current_proc->state->pagefin++;
+                        }
+                    }else if(pte->PAGEDOUT){
+                        if(ifInst){
+                            cout << " IN" << endl;
+                            current_proc->state->pagein++;
+                        }
+                    }else{
+                        if(ifInst){
+                            cout << " ZERO" << endl;
+                            current_proc->state->zeroOp++;
+                        }
+                    }
+                
+                    frame_t->process = current_proc;
+                    frame_t->virtaul_page_number = inst->number;
+                    frame_t->timeOfLastAccess = instruction_idx + 1;
 
+                    resetPte(pte);
                     pte->PRESENT = 1;
-                    pte->page_frame_number = old_frame_t->frame_number;
-                    
+                    pte->page_frame_number = frame_t->frame_number;
+                    current_proc->page_table.at(inst->number);
+                    if(ifInst){
+                        cout << " MAP" << frame_t->frame_number << endl;
+                    }
+                    current_proc->state->map++;
                 }
                 pte->REFERENCED = 1;
                 if(inst -> operation == 'w'){
@@ -294,5 +388,57 @@ void printSummary(vector<Process*> *processVector, int instruction_idx){
                 processVector->at(i)->pid, state->unmap, state->map, state->pagein, state->pageout,
                 state->pagefin, state->pagefout, state->zeroOp, state->segv, state->segprot);
     }
-    printf("TOTAL: %llu %llu %llu %llu\n", static_cast<unsigned long long>(instruction_idx), context_switchs, cost,  processExit);
+    printf("TOTAL: %llu %llu %llu %llu %llu\n", static_cast<unsigned long long>(instruction_idx), context_switchs, 
+            processExit, cost, static_cast<unsigned long long>(sizeof(page_t)));
+}
+
+void exitProcess(Process *current_proc, vector<frame_t*> *global_frame_table, vector<frame_t*> *freePool){
+    page_t *pte;
+    cout << "exit current process " << current_proc->pid << endl;
+    for(int i = 0; i < current_proc->page_table.size(); i++){
+        pte = &(current_proc->page_table.at(i));
+        pte->PAGEDOUT = 0;
+        if(pte->PRESENT){
+            int fteptr = pte->page_frame_number;
+            frame_t *fte = global_frame_table->at(fteptr);
+            unmapPage(fte, true);
+            freePool->push_back(fte);
+        }
+    }
+}
+
+void unmapPage(frame_t *fte, bool pageExit){
+    Process *process = fte->process;
+    if(ifInst){
+        printf("UNMAP %d:%d\n", process->pid, fte->virtaul_page_number);
+    }
+    process->state->unmap++;
+    if(!pageExit && process->page_table.at(fte->virtaul_page_number).MODIFIED &
+        !process->page_table.at(fte->virtaul_page_number).file_mapped){
+            if(ifInst){
+                printf(" OUT\n");
+                process->state->pageout++;
+            }
+    }
+    if(process->page_table.at(fte->virtaul_page_number).file_mapped &
+        process->page_table.at(fte->virtaul_page_number).MODIFIED){
+            if(ifInst){
+                printf(" FOUT\n");
+                process->state->pagefout++;
+            }
+    }
+    if(!pageExit && process->page_table.at(fte->virtaul_page_number).MODIFIED &
+        !process->page_table.at(fte->virtaul_page_number).file_mapped){
+            process->page_table.at(fte->virtaul_page_number).PAGEDOUT = 1;
+    }
+    process->page_table.at(fte->virtaul_page_number).PRESENT = 0;
+    fte->virtaul_page_number = -1;
+    fte->process = nullptr;
+}
+
+void resetPte(page_t *pte){
+    pte->PRESENT = 0;
+    pte->MODIFIED = 0;
+    pte->REFERENCED = 0;
+    pte->page_frame_number = 0;
 }
